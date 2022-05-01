@@ -9,6 +9,8 @@ import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 
 import java.text.DateFormat
@@ -33,33 +35,37 @@ class ImageClickActivityPresenter : ImageClickActivityInterface.Presenter {
 
     override fun uploadImageOnFirebase(key : String, photoBitmap : Bitmap?) {
 
-        val user : String? = sharedPref.getUser()
-        val byteArrayOutputStream : ByteArrayOutputStream =  ByteArrayOutputStream()
-        photoBitmap?.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+        View.showDialog()
 
-        if(user!=null){
+        GlobalScope.launch {
+            val user : String? = sharedPref.getUser()
+            val byteArrayOutputStream : ByteArrayOutputStream =  ByteArrayOutputStream()
+            photoBitmap?.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
 
-            View.showDialog()
-            firebaseStorage.getReference().child(user).child(key).putBytes(byteArrayOutputStream.toByteArray()).addOnSuccessListener(
-                OnSuccessListener {
+            if(user!=null){
 
-                    View.dismissDialog()
+                firebaseStorage.getReference().child(user).child(key).putBytes(byteArrayOutputStream.toByteArray()).addOnSuccessListener(
+                    OnSuccessListener {
 
-                    Toast.makeText(Context , "Image uploaded successfully" , Toast.LENGTH_SHORT).show()
+                        View.dismissDialog()
 
-                    val localTime : String = getCurrentTime()
-                    val url = it.storage.downloadUrl.toString()
-                    val map : MutableMap<String, String> = mutableMapOf()
-                    map["URL"] = url
-                    map["Time"] = localTime
-                    firebaseDatabase.getReference().child("store_visits").child(user).child(key).push().setValue(map)
+                        Toast.makeText(Context , "Image uploaded successfully" , Toast.LENGTH_SHORT).show()
+
+                        val localTime : String = getCurrentTime()
+                        val url = it.storage.downloadUrl.toString()
+                        val map : MutableMap<String, String> = mutableMapOf()
+                        map["URL"] = url
+                        map["Time"] = localTime
+                        firebaseDatabase.getReference().child("store_visits").child(user).child(key).push().setValue(map)
 
 
-                }).addOnFailureListener(OnFailureListener {
+                    }).addOnFailureListener(OnFailureListener {
 
                     Toast.makeText(Context , it.message.toString() , Toast.LENGTH_SHORT).show()
                     View.dismissDialog()
-            })
+                })
+
+            }
 
         }
 
